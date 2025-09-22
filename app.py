@@ -3,20 +3,12 @@ import tensorflow as tf
 import numpy as np
 from tensorflow.keras.preprocessing import image
 import json
-import os
 
 # =====================
 # 1. Load Model
 # =====================
-MODEL_PATH = "cnn_deforestation_model.keras"
-
-# Optional: Check if file exists first
-if not os.path.exists(MODEL_PATH):
-    raise FileNotFoundError(f"Model file not found at {MODEL_PATH}")
-
+MODEL_PATH = "cnn_deforestation_model.keras"   # ganti sesuai nama file model
 model = tf.keras.models.load_model(MODEL_PATH)
-print("✅ Model loaded successfully!")
-
 
 # =====================
 # 2. Load Label Mapping
@@ -43,20 +35,46 @@ class_labels = [k for k, v in sorted(class_indices.items(), key=lambda x: x[1])]
 # =====================
 st.title("🌍 Deforestation Classification App")
 st.write("Upload citra satelit untuk memprediksi jenis lahan.")
+# st.sidebar.title("⚙️ Pengaturan")
+# st.sidebar.info("Upload gambar satelit untuk klasifikasi lahan.")
+st.markdown(
+    """
+    <style>
+    .big-font {
+        font-size:30px !important;
+        color: green;
+        font-weight: bold;
+    }
+    .footer {
+        position: fixed;
+        left: 0;
+        bottom: 0;
+        width: 100%;
+        text-align: center;
+        font-size: 12px;
+        color: gray;
+    }
+    </style>
+    """, unsafe_allow_html=True
+)
+
+st.markdown('<p class="big-font">🌳 This model is using Basic Convolutional Neural Network</p>', unsafe_allow_html=True)
+
 
 uploaded_file = st.file_uploader("Pilih gambar", type=["jpg", "jpeg", "png"])
 
 if uploaded_file is not None:
     # tampilkan gambar
-    st.image(uploaded_file, caption="Gambar yang diupload", use_container_width=True)
+    st.image(uploaded_file, caption="Gambar yang diupload", use_column_width=True)
 
     # =====================
     # 4. Preprocessing
     # =====================
-    img = image.load_img(uploaded_file, target_size=(224, 224))  # karena ResNet50
+    img = image.load_img(uploaded_file, target_size=(128, 128))
     img_array = image.img_to_array(img)
     img_array = np.expand_dims(img_array, axis=0)
-    img_array = tf.keras.applications.resnet50.preprocess_input(img_array)
+    img_array = img_array / 255.0   # sama kayak di ImageDataGenerator(rescale=1./255)
+
 
     # =====================
     # 5. Prediksi
@@ -73,11 +91,6 @@ if uploaded_file is not None:
     st.write(f"**Kelas Prediksi:** {pred_label}")
     st.write(f"**Probabilitas:** {pred_prob:.4f}")
 
-    # tampilkan semua probabilitas dengan label
-    import pandas as pd
-    df_probs = pd.DataFrame({
-        "Probabilitas": preds[0]
-    }, index=class_labels)
-
-    st.bar_chart(df_probs)  # bar chart pakai label
-    st.dataframe(df_probs.style.format({"Probabilitas": "{:.4f}"}))  # tabel rapi
+    # tampilkan semua probabilitas
+    st.bar_chart(preds[0])
+    st.write({class_labels[i]: float(preds[0][i]) for i in range(len(class_labels))})
